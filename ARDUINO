@@ -1,0 +1,64 @@
+#include <Wire.h>
+#include <ThreeWire.h>  
+#include <RtcDS1302.h>
+#include <Servo.h>
+
+// กำหนดขาเชื่อมต่อ RTC DS1302
+ThreeWire myWire(A4, A5, 10); // IO, SCLK, CE
+RtcDS1302<ThreeWire> Rtc(myWire);
+
+// กำหนดเซอร์โวมอเตอร์
+Servo fishFeeder;
+
+void setup() {
+    Serial.begin(57600);
+
+    // ตั้งค่ามอเตอร์เซอร์โวที่ขา 9
+    fishFeeder.attach(9);
+    fishFeeder.write(0); // ตั้งมุมเริ่มต้น
+
+    // เริ่มต้น RTC
+    Rtc.Begin();
+
+    // ตั้งค่าเวลาลงใน RTC (ใช้ครั้งเดียวตอนตั้งค่า ไม่ต้องรันซ้ำ)
+    RtcDateTime newTime(2025, 3, 1, 21, 6, 0);  
+    Rtc.SetDateTime(newTime);
+}
+
+void loop() {
+    RtcDateTime now = Rtc.GetDateTime();
+
+    // แสดงค่าวันที่และเวลา
+    printDateTime(now);
+
+    // ตั้งเวลาที่ต้องการให้อาหาร (เช่น 9:15 น. และ 21:15 น.)
+    if ((now.Hour() == 9 && now.Minute() == 15) || (now.Hour() == 21 && now.Minute() == 15)) {
+        feedFish();  // ทำการให้อาหาร
+    }
+
+    delay(1000);  // หน่วงเวลา 1 วินาที
+}
+
+// ฟังก์ชันแสดงวัน/เวลา
+void printDateTime(const RtcDateTime& dt) {
+    Serial.print(dt.Day());
+    Serial.print("/");
+    Serial.print(dt.Month());
+    Serial.print("/");
+    Serial.print(dt.Year());
+    Serial.print("  ");
+    Serial.print(dt.Hour());
+    Serial.print(":");
+    Serial.print(dt.Minute());
+    Serial.print(":");
+    Serial.println(dt.Second());
+}
+
+// ฟังก์ชันให้อาหารปลา
+void feedFish() {
+    Serial.println("Feeding the fish...");
+    fishFeeder.write(135);  // หมุนเซอร์โว 135 องศา เพื่อเปิดช่องอาหาร
+    delay(1000);           // รอให้อาหารตกลงมา
+    fishFeeder.write(0);   // กลับสู่ตำแหน่งเดิม
+    delay(5000);           // รอ 5 วินาทีก่อนกลับเข้าสู่ loop ปกติ
+}
